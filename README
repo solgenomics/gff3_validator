@@ -1,0 +1,33 @@
+# README
+# Author: Payan Canaran (canaran@cshl.edu)
+# Copyright (c) 2006-2007 Cold Spring Harbor Laboratory
+# $Id: README,v 1.1 2007/12/03 14:20:23 canaran Exp $
+
+GFF3 Validator
+==============
+
+ ################################################################
+ # THIS TOOL IS CURRENTLY UNDER DEVELOPMENT AND HAS NOT BEEN    # 
+ # COMPLETELY TESTED AND DOCUMENTED. PLEASE REPORT ANY BUGS.    #
+ ################################################################
+
+This package contains the following files:
+
+README                    : this file
+validate_gff3.pod         : description of validation process and installation (POD)
+validate_gff3.html        : description of validation process and installation (HTML)
+
+validate_gff3.pl          : command-line script
+validate_gff3.cfg         : configuration file for command-line script
+
+validate_gff3_online      : online script
+validate_gff3_online.cfg  : configuration file for online script
+
+lib/GFF3/Validator.pm     : validation module 
+lib/GFF3/Online.pm        : online interface module 
+
+html/checked_box.gif      : HTML image
+html/gff3_validated.png   : HTML image
+html/invalid.png          : HTML image
+html/unchecked_box.gif    : HTML image
+html/formatting.css       : CSS

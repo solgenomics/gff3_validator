@@ -1,0 +1,28 @@
+Revision history for GFF3 Validator
+
+2007-12-17
+
+- Disable session checking
+- Remove use lib statement
+
+2007-06-22
+
+- Temporarily disable checking validity of derives_relationships
+- Increase default max_ontology_download_size in config
+
+2007-05-04
+
+- Fix/improve checks for empty values
+- Display multiple ontology options in online implementation
+- Modify handling of ontology (now recursive is_a links from
+  top level terms disregarded for part_of relationships)
+- Add SQLite support (adapted from patch contributed by Robert Buels)
+- phase is now required for CDS features
+
+2006-11-16
+
+2006-10-13
+
+2006-09-07
+
+

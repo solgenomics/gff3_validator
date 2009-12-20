@@ -1,0 +1,289 @@
+=head1 NAME
+
+validate_gff3.pod
+
+=head1 SYNOPSIS
+
+GFF3 Validation Tutorial
+
+=head1 DESCRIPTION
+
+This package contains code for validating a GFF3 file. Validation can be performed using the command-line script or
+the web script.
+
+In either case, analysis is performed using the GFF3::Validator module.
+
+This module, parses the GFF3 file, loads data into a MySQL/SQLite database, performs a number of analysis steps and produces a report file.
+
+This document details the analysis steps performed. The command-line script and the web script generate a Validator object,
+managing I/O and run Validator object methods, and provide the results to the user.
+
+=head2 Analysis and Validation Steps
+
+=head3 Parsing and Format Validation
+
+In this step, the GFF3 file is read from beginning to end, lines are parsed and formatting errors are recorded.
+Feature lines and directives are stored in two separate tables for further processing. Malformed directives, comments
+and FASTA lines are not loaded into the database. Parseable parts of feature lines are loaded into the database.
+The implication of this is that, if a line is not parseable, it will be disregarded in further analysis. For example,
+(i) if feature A has a parent feature A and (ii) feature A cannot be parsed and loaded, (iii) in downstream analysis,
+since feature A points to an invalid feature, this will be raised as an error.
+
+The following points are validated at this step:
+
+ - spaces at the end of lines are allowed and disregarded
+ - empty lines, comments (starting with a single #) are disregarded
+ - '>' implies a '##FASTA' directive, following lines that follow are disegarded
+
+ - the following directives are recognized and checked for format
+   multiple spaces in the format are treated as single space
+
+    - ##gff-version version
+      - must be "##gff-version 3"
+      - must be present and be the first line
+
+    - ##sequence-region seqid end
+      - must have the format "##sequence-region \S+ \d+ \d+"
+
+    - ##feature-ontology URI
+
+    - ##attribute-ontology URI
+      - cannot be used now, reserved for future use
+
+    - ##source-ontology URI
+      - cannot be used now, reserved for future use
+
+    - ###
+
+    - ##FASTA
+      - lines following this directive are disregarded
+
+ - the following checks are performed on feature lines:
+
+    - must be exactly 9 fields
+    - fields are split on single tabs
+    - empty fields must have a dot
+
+    - individual fields are processed as follows:
+
+      - field 1: seqid
+        - only following characters are allowed [a-zA-Z0-9\.\:\^\*\$\@\!\+\_\?\-\|\%]
+        - cannot be empty (dot)
+
+      - field 2: source
+        - only following characters are allowed [a-zA-Z0-9\.\: \^\*\$\@\!\+\_\?\-\%]
+        - can be empty (dot)
+
+      - field 3: type
+        - only following characters are allowed [a-zA-Z0-9\.\: \^\*\$\@\!\+\_\?\-]
+        - cannot be empty (dot)
+
+      - fields 4 and 5: start and end
+        - must be integers
+        - must be in 1-based coordinate system
+        - end must be greater than or equal to start
+        - cannot be empty (dot)
+
+      - field 6: score
+        - must be a floating number (e.g. "1.2", "5", "1e-10", "-1e+10")
+          (for scientific notation: /^[\+\-]{0,1}\d+(e|E)[\+\-]\d+$/ is used)
+        - can be empty (dot)
+
+      - field 7: strand
+        - must be + or -
+        - can be empty (dot)
+
+      - field 8: phase
+        - must be 0 or 1 or 2
+        - can be empty (dot)
+        - must be 0, 1 or 2 for CDS features
+
+      - field 9: attributes
+        - can be empty (dot)
+        - attributes are in tag=value format, separated by semicolon (tag=value pairs split on semicolon)
+        - tag=value pairs are parsed based on first equals sign
+        - value cannot contain an unescaped equals sign
+        - each tag should must appear only once, multiple values can be provided to a tag
+          separated by comma
+        - tag cannot have a preceding or leading space and cannot be empty
+        - value cannot be empty
+        - first-upprcase tags are reserved, only the following are recognized and checked as follows
+
+          - tag: ID
+            - there can be only one ID in a single line
+
+          - tag: Name
+
+          - tag: Alias
+
+          - tag: Parent
+            - parents are captured for further analysis
+
+          - tag: Target
+            - format must be target_id start end [strand]
+            - multiple spaces can be used
+
+          - tag: Gap
+            - format checked, e.g. Gap=M8 D3 M6 I1 M6
+            - the following operations are allowed: [MIDFRmidfr]
+            - multiple spaces can be used
+
+          - tag: Derives_from
+            - derives_from parents are captured for further analysis
+          - tag: Note
+
+          - tag: Dbxref
+            - format checked for DBTAG:ID (split on first colon)
+
+          - tag: Ontology_term
+            - format checked for DBTAG:ID (split on first colon)
+
+=head3 Unique ID Validation
+
+ID attributes provided for features must be unique throughout the gff3 file. These ID's are used to
+make "part_of" (Parent) associations between features. Each line, if contains an ID, must be unique.
+For multi-feature features, such as alignments, multiple lines can share the same ID. If this is the case,
+the seqid, source, type (method), strand, target name and all other attributes other than target must be the same.
+
+This step goes through the features that have an ID and checks for uniqueness, taking into account
+multi-feature cases.
+
+Unique features are marked as unique. Features that illegally share the same ID are marked as non-unique.
+This information is later used for further processing.
+
+=head3 Loading Ontology
+
+GFF3 requires types of features to be coming from an ontology and Parent relationships to be valid "part_of" relationships
+based on the ontology. In this step, the ontology that will be used as the basis of this analysis is loaded.
+
+GFF3 specs allow the ontology to be loaded by the ##feature-ontology directive. Multiple ontologies can be loaded,
+in which case, they need to be merged and used for the analysis. If they are not provided, the ontology defaults to SOFA.
+
+In this validation implementation, the following rule is used:
+
+ - Ontology files provided in the command line and ##feature-ontology directives are
+   retrieved. If at least one of these files are retrieved, that ontology file is loaded in memory
+   and used for the analysis.
+
+ - If no ontology files are provided in the command-line and ##feature-ontology directives, or
+   if they are provided but none of them are accesible, default ontology file provided in the
+   configuration file is retrieved and used for the analysis. If it is not accessible either,
+   an error is recorded and loading ontology, type field validation, parent and derives_from
+   validation steps are skipped.
+
+For retrieval of ontologies, the following rule is used:
+
+ - the URIs that begin with http:, ftp:, file: are retrieved
+   by LWP
+ - the URIs that begin with other <protocol>: are not retrieved
+ - other URIs are treated as local file names and ther existence is checked
+
+=head3 "type" Field Validation
+
+GFF3 file type fields must be valid ontology terms (names or accession numbers). In this step, the type fields are
+validated against the ontology, as loaded in the previous step. This step is skipped if no ontology can be loaded.
+
+Features are marked as valid or invalid. This information is later used for further processing.
+
+=head3 "part_of" Relationship Validation
+
+For features in a GFF3 file, Parent attribute, if provided, indicates that the feature is "part_of" the feature,
+assigned as Parent. The feature type of the parent and the feature type of the child must be terms that
+can have a part_of relationship based on the ontology. Circular assignments are checked at this step as well
+(e.g. if C is parent of B, B is parent of A, then A cannot be parent of B or C).
+or the parent have in-valid types, or parent has a non-unique ID.
+
+These checks are not performed if either the child or the parent have invalid types, or parent has a non-unique
+ID or does not exist (These cases are recorded separately as erros).
+
+This step is skipped if no ontology can be loaded.
+
+=head3 "derives_from" Relationship Validation
+
+Similar to Parent attribute, Derives_from attribute, if provided, indicates that the feature "derives_from" the feature,
+assigned as Derives_from. The feature type of the parent and the feature type of the child must be terms that
+can have a derives_from relationship based on the ontology.
+
+Unlike Parent assignments, Derives_from assignments are checked for one level only.
+
+*** Currently type validation for Derives_from assignments is disabled. ***
+
+These checks are not performed if either the child or the parent have invalid types, or parent has a non-unique
+ID or does not exist (These cases are recorded separately as erros).
+
+This step is skipped if no ontology can be loaded.
+
+=head2 Report Generation
+
+At the end of analysis, errors and warnings are compiled into a single list, sorted by their line numbers.
+
+=head2 Installation
+
+=head3 Command-line tool
+
+- Copy over lib/GFF3/Validator.pm. Adjust your Perl library paths to make it accesible.
+
+- Create a writable temporary directory and include path to it in the configuration file.
+
+- Use validate_gff3.pl validation script with its configuration file, validate_gff3.cfg.
+
+- For usage information on validate_gff3.pl, use:
+
+  perldoc validate_gff3.pl
+
+- For configuration information, check documentation embedded in validate_gff3.cfg .
+
+=head3 Online tool
+
+- Copy over lib/GFF3/Validator.pm and lib/GFF3/Online.pm. Adjust your Perl library paths to make them accesible.
+
+- In your web site's document root, create the following directory (you can use another web accesible directory,
+if this is the case configure the paths in the configuration files accordingly):
+
+  validate_gff3_online
+
+Copy over contents of html directory (images, documentation, stylesheet) into this directory, adjust permissions.
+
+- Copy over validate_gff3_online (CGI script) into a CGI-executable directory, adjust permissions.
+
+- Create a writable temporary directory and include path to it in the configuration files (see configuration files).
+
+- Copy over validate_gff3.cfg and validate_gff3_online.cfg (configuration files) into $ENV{DOCUMENT_ROOT}/../conf
+directory. Configure the application using these files (files contain embedded documentation). Start with
+validate_gff3.cfg. Note: If you want to place validate_gff3_online.cfg in a different directory, modify the
+location of this file in validate_gff3_online script. The location of validate_gff3.cfg
+can be set in the validate_gff3_online.cfg file.
+
+=head3 Notes
+
+- The default source for an ontology file is to retrieve it from the Sequence Ontology site. However, if you 
+intend to make many runs locally, or if you install an online version, please download the ontology file
+and change the configuration to point to the local file.
+
+=cut
+
+=head1 SEE ALSO
+
+=head1 AUTHOR
+
+Payan Canaran <canaran@cshl.edu>
+
+=head1 VERSION
+
+$Id: validate_gff3.pod,v 1.1 2007/12/03 14:20:23 canaran Exp $
+
+=head1 CREDITS
+
+- SQLite support adapted from patch contributed by Robert Buels <rmb32@cornell.edu>. 
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2006-2007 Cold Spring Harbor Laboratory
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself. See DISCLAIMER.txt for
+disclaimers of warranty.
+
+=cut
+
+1;

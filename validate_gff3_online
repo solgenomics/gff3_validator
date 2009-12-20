@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+
+=head1 NAME
+
+validate_gff3_online
+
+=head1 SYNOPSIS
+
+ validate_gff3_online
+
+=head1 DESCRIPTION
+
+ [...]
+
+=head1 USAGE
+
+ [...]
+
+=cut
+
+use strict;
+
+use FindBin::Real;
+use GFF3::Online;
+
+# Disable buffering to write immediately to the screen
+# for DOM/Javascript directives to work
+$| = 1;
+
+# Create Manager object
+my $config = $ENV{DOCUMENT_ROOT} . "/../conf/validate_gff3_online.cfg";
+my $gff3_online = GFF3::Online->new(-config => $config);
+
+# Display page
+$gff3_online->display;
+
+# [END]
+
+=head1 SEE ALSO
+
+=head1 AUTHOR
+
+Payan Canaran <canaran@cshl.edu>
+
+=head1 VERSION
+
+$Id: validate_gff3_online,v 1.2 2007/12/18 00:42:36 canaran Exp $
+
+=head1 CREDITS
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2006-2007 Cold Spring Harbor Laboratory
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself. See DISCLAIMER.txt for
+disclaimers of warranty.
+
+=cut
+
+1;

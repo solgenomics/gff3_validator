@@ -1,0 +1,105 @@
+/*  Author: Payan Canaran (canaran@cshl.edu) */
+/*  $Id: formatting.css,v 1.1 2007/12/03 14:20:23 canaran Exp $ */
+/*  Copyright 2004-2006 Cold Spring Harbor Laboratory */
+
+/* aqua, black, blue, fuchsia, gray, green, lime, maroon, navy, olive, purple, red, silver, teal, yellow, white */
+/* background-color: #ffffff */
+
+
+body
+{
+font-family: helvetica, arial, 'sans serif'; 
+font-size: 13;
+color: #000000;
+background-color: #FFFFFF;
+}
+
+form
+{
+font-family: helvetica, arial, 'sans serif'; 
+font-size: 13;
+color: #000000;
+}
+
+table
+{
+font-family: helvetica, arial, 'sans serif'; 
+font-size: 13;
+color: #000000;
+}
+
+h1, h2, h3
+{
+color: #00008B;
+}
+
+h1
+{
+text-align: center;
+font-weight: bold;
+font-size: 32; 
+}
+
+h2
+{
+font-weight: bold;
+font-size: 16; 
+}
+
+h3
+{
+font-weight: bold;
+font-size: 12; 
+}
+
+.box
+{
+font-size: 13;
+border-style: solid;
+border-width: thin;
+border-color: #616161;
+background-color: #FFFF66;
+}
+
+.small_box
+{
+font-size: 11;
+border-style: solid;
+border-width: thin;
+border-color: #616161;
+background-color: #FFFF66;
+}
+
+.small_box2
+{
+font-size: 11;
+border-style: solid;
+border-width: thin;
+border-color: #616161;
+background-color: #EEE9E9;
+}
+
+.highlight
+{
+color: #FF0000;
+font-style: italic;
+}
+
+.attention
+{
+font-size: 40;
+color: #FF0000;
+font-style: bold;
+}
+
+.fixed_width
+{
+font-family: courier; 
+font-size: 13;
+}
+
+a:link    {color: #0000FF}
+a:visited {color: #0000FF}
+a:active  {color: #0000FF}
+a:hover   {color: #660000}
+
